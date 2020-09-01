@@ -1,0 +1,54 @@
+# ファイルフォーマットのバージョンを宣言
+version: '3'
+
+services:
+
+  # webサーバを立ち上げるコンテナ（Nginnxコンテナ）
+  web:
+    # イメージ作成時にベースとするDockerイメージとバージョンの指定
+    image: nginx:1.15.6
+
+    # ポートフォワーディングの指定　ホスト側のポート：コンテナ側のポート　と記述
+    ports:
+      # ホスト側からlocalhost:8000にアクセスすると、コンテナ側のlocalhostにアクセス
+      - '8000:80'
+    
+    # PHPコンテナが起動した後にNginxコンテナが起動する依存関係を定義
+    depends_on:
+      - app
+
+    # ホスト・コンテナ間でのファイル共有の指定　ホスト側のパス：コンテナ側のパス　と記述　→　volumesを設定することでファイルやデレクとりは永続化できる（コンテナを削除してもホスト側にファイルやディレクトリが残る）
+    volumes:
+      # ホスト側で編集した./docker/web/default.confがコンテナ側の/etc/nginx/conf.d/default.confに反映される
+      - ./docker/web/default.conf:/etc/nginx/conf.d/default.conf
+      # ホスト側のルートディレクトリの内容が/var/www/htmlに反映される
+      - .:/var/www/html
+
+
+  # PHPを動作させるコンテナ（phpコンテナ）
+  app:
+    # buildでDockerfileがあるディレクトリを指定し、Dockerfileをもとにイメージを作成するように定義
+    build: ./docker/php
+    volumes:
+      - .:/var/www/html
+    depends_on:
+      - mysql
+
+
+  # MySQLのコンテナ（mysqlコンテナ）
+  mysql:
+    image: mysql:5.7
+    environment:
+      MYSQL_DATABASE: sample
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+
+# mysql-dataをサービス内で共通化して他のコンテナからも参照できるうようにする設定
+volumes:
+  mysql-data:
